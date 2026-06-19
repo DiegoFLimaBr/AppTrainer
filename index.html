@@ -207,6 +207,7 @@
               <option value="empurrar">Empurrar (peito / ombro / tríceps)</option>
               <option value="puxar">Puxar (costas / bíceps)</option>
               <option value="pernas">Pernas</option>
+              <option value="abdomen">Abdômen</option>
             </select>
           </div>
           <div id="listaExercicios"></div>
@@ -282,6 +283,7 @@
     forca_empurrar:{label:"Empurrar", pilar:"forca"},
     forca_puxar:{label:"Puxar", pilar:"forca"},
     forca_pernas:{label:"Pernas", pilar:"forca"},
+    forca_abdomen:{label:"Abdômen", pilar:"forca"},
     end_ciclismo:{label:"Ciclismo", pilar:"resistencia"},
     end_corrida:{label:"Corrida", pilar:"resistencia"},
     end_natacao:{label:"Natação", pilar:"resistencia"},
@@ -290,12 +292,12 @@
     disciplina:{label:"Disciplina", pilar:"disciplina"},
     flexibilidade:{label:"Flexibilidade", pilar:"saude"}
   };
-  var GRUPOS_ACADEMIA = {empurrar:"forca_empurrar", puxar:"forca_puxar", pernas:"forca_pernas"};
+  var GRUPOS_ACADEMIA = {empurrar:"forca_empurrar", puxar:"forca_puxar", pernas:"forca_pernas", abdomen:"forca_abdomen"};
   var MODALIDADES_AEROBICO = {ciclismo:"end_ciclismo", corrida:"end_corrida", natacao:"end_natacao", squash:"end_squash", beach_tennis:"end_beach_tennis"};
-  var ATTRS_GRUPO_LABEL = {empurrar:"Empurrar (peito/ombro/tríceps)", puxar:"Puxar (costas/bíceps)", pernas:"Pernas"};
+  var ATTRS_GRUPO_LABEL = {empurrar:"Empurrar (peito/ombro/tríceps)", puxar:"Puxar (costas/bíceps)", pernas:"Pernas", abdomen:"Abdômen"};
   var MODALIDADES_LABEL = {ciclismo:"Ciclismo", corrida:"Corrida", natacao:"Natação", squash:"Squash", beach_tennis:"Beach Tennis"};
   var DIAS = [["dom","Domingo"],["seg","Segunda"],["ter","Terça"],["qua","Quarta"],["qui","Quinta"],["sex","Sexta"],["sab","Sábado"]];
-  var OPCOES_ACADEMIA = [["","Nenhum"],["empurrar","Empurrar"],["puxar","Puxar"],["pernas","Pernas"]];
+  var OPCOES_ACADEMIA = [["","Nenhum"],["empurrar","Empurrar"],["puxar","Puxar"],["pernas","Pernas"],["abdomen","Abdômen"]];
   var OPCOES_AEROBICO = [["","Nenhuma"],["ciclismo","Ciclismo"],["corrida","Corrida"],["natacao","Natação"],["squash","Squash"],["beach_tennis","Beach Tennis"]];
 
   function contarSessoesPorDistanciaMinima(state, subtipo, distanciaMin){
@@ -336,7 +338,7 @@
       if(t.tipo === "academia") gruposForca[t.detalhes.grupo] = true;
       if(t.tipo === "aerobico") modalidades[t.detalhes.subtipo] = true;
     });
-    var gOk = ["empurrar","puxar","pernas"].every(function(g){ return gruposForca[g]; });
+    var gOk = ["empurrar","puxar","pernas","abdomen"].every(function(g){ return gruposForca[g]; });
     var mOk = ["ciclismo","corrida","natacao","squash"].every(function(m){ return modalidades[m]; });
     return gOk && mOk;
   }
@@ -399,7 +401,7 @@
   function nivelAtributo(xp){ return nivelInfo(xp,60,30); }
 
   function calcularClasse(state){
-    var forca = ["forca_empurrar","forca_puxar","forca_pernas"].reduce(function(s,k){ return s+state.atributos[k].xp; },0);
+    var forca = ["forca_empurrar","forca_puxar","forca_pernas","forca_abdomen"].reduce(function(s,k){ return s+state.atributos[k].xp; },0);
     var resis = ["end_ciclismo","end_corrida","end_natacao","end_squash"].reduce(function(s,k){ return s+state.atributos[k].xp; },0);
     var total = forca+resis;
     if(total===0) return "Iniciante";
@@ -420,7 +422,7 @@
       versao:1,
       perfil:{streakAtual:0, streakMaxima:0, ultimaData:null, protecoes:0},
       atributos:{
-        forca_empurrar:{xp:0}, forca_puxar:{xp:0}, forca_pernas:{xp:0},
+        forca_empurrar:{xp:0}, forca_puxar:{xp:0}, forca_pernas:{xp:0}, forca_abdomen:{xp:0},
         end_ciclismo:{xp:0}, end_corrida:{xp:0}, end_natacao:{xp:0}, end_squash:{xp:0}, end_beach_tennis:{xp:0},
         disciplina:{xp:0},
         flexibilidade:{xp:0}
