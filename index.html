@@ -95,6 +95,11 @@
   .historico-data{font-family:var(--font-mono); font-size:12px; color:var(--text-dim); min-width:70px;}
   .historico-resumo{flex:1; font-size:14px;}
   .historico-xp{font-family:var(--font-mono); font-size:13px; color:var(--saude); white-space:nowrap;}
+  .btn-deletar{background:none; border:none; color:var(--text-dim); font-size:16px; cursor:pointer; padding:4px 6px; border-radius:6px; line-height:1; opacity:.5; transition:opacity .15s,color .15s;}
+  .btn-deletar:hover{opacity:1; color:var(--perigo);}
+  .card-alongamento{background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--saude); border-radius:var(--radius); padding:18px 20px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; gap:16px;}
+  .card-alongamento-texto h2{margin:0 0 4px; font-size:17px;}
+  .btn-alongamento{background:var(--saude); color:#0D1F14; border:none; border-radius:8px; padding:12px 20px; font-weight:700; font-size:15px; cursor:pointer; white-space:nowrap;}
 
   .grid-conquistas{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;}
   .tile-conquista{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; border-left:3px solid var(--text-dim);}
@@ -175,6 +180,13 @@
     </section>
 
     <section id="tab-registrar" class="tab-content">
+      <div class="card-alongamento">
+        <div class="card-alongamento-texto">
+          <h2>Alongamento</h2>
+          <p class="texto-suporte" style="margin:0">Registra uma sessão de hoje com um toque.</p>
+        </div>
+        <button type="button" id="btnAlongamento" class="btn-alongamento">+ Alongamento</button>
+      </div>
       <form id="formTreino" class="form-treino">
         <div class="campo">
           <label>Tipo de treino</label>
@@ -209,6 +221,7 @@
               <option value="corrida">Corrida (esteira)</option>
               <option value="natacao">Natação</option>
               <option value="squash">Squash</option>
+              <option value="beach_tennis">Beach Tennis</option>
             </select>
           </div>
           <div class="campo-linha">
@@ -273,16 +286,34 @@
     end_corrida:{label:"Corrida", pilar:"resistencia"},
     end_natacao:{label:"Natação", pilar:"resistencia"},
     end_squash:{label:"Squash", pilar:"resistencia"},
-    disciplina:{label:"Disciplina", pilar:"disciplina"}
+    end_beach_tennis:{label:"Beach Tennis", pilar:"resistencia"},
+    disciplina:{label:"Disciplina", pilar:"disciplina"},
+    flexibilidade:{label:"Flexibilidade", pilar:"saude"}
   };
   var GRUPOS_ACADEMIA = {empurrar:"forca_empurrar", puxar:"forca_puxar", pernas:"forca_pernas"};
-  var MODALIDADES_AEROBICO = {ciclismo:"end_ciclismo", corrida:"end_corrida", natacao:"end_natacao", squash:"end_squash"};
+  var MODALIDADES_AEROBICO = {ciclismo:"end_ciclismo", corrida:"end_corrida", natacao:"end_natacao", squash:"end_squash", beach_tennis:"end_beach_tennis"};
   var ATTRS_GRUPO_LABEL = {empurrar:"Empurrar (peito/ombro/tríceps)", puxar:"Puxar (costas/bíceps)", pernas:"Pernas"};
-  var MODALIDADES_LABEL = {ciclismo:"Ciclismo", corrida:"Corrida", natacao:"Natação", squash:"Squash"};
+  var MODALIDADES_LABEL = {ciclismo:"Ciclismo", corrida:"Corrida", natacao:"Natação", squash:"Squash", beach_tennis:"Beach Tennis"};
   var DIAS = [["dom","Domingo"],["seg","Segunda"],["ter","Terça"],["qua","Quarta"],["qui","Quinta"],["sex","Sexta"],["sab","Sábado"]];
   var OPCOES_ACADEMIA = [["","Nenhum"],["empurrar","Empurrar"],["puxar","Puxar"],["pernas","Pernas"]];
-  var OPCOES_AEROBICO = [["","Nenhuma"],["ciclismo","Ciclismo"],["corrida","Corrida"],["natacao","Natação"],["squash","Squash"]];
+  var OPCOES_AEROBICO = [["","Nenhuma"],["ciclismo","Ciclismo"],["corrida","Corrida"],["natacao","Natação"],["squash","Squash"],["beach_tennis","Beach Tennis"]];
 
+  function contarSessoesPorDistanciaMinima(state, subtipo, distanciaMin){
+    return state.treinos.filter(function(t){
+      return t.tipo === "aerobico" && t.detalhes.subtipo === subtipo && (t.detalhes.distanciaKm||0) >= distanciaMin;
+    }).length;
+  }
+  function melhorRitmoKmH(state, subtipo, distanciaMin){
+    var sessions = state.treinos.filter(function(t){
+      return t.tipo === "aerobico" && t.detalhes.subtipo === subtipo &&
+             (t.detalhes.distanciaKm||0) >= distanciaMin && (t.detalhes.duracaoMin||0) > 0;
+    });
+    if(sessions.length === 0) return 0;
+    var melhor = Math.max.apply(null, sessions.map(function(t){
+      return (t.detalhes.distanciaKm / t.detalhes.duracaoMin) * 60;
+    }));
+    return melhor;
+  }
   function somaVolumeForca(state){
     return state.treinos.filter(function(t){ return t.tipo === "academia"; })
       .reduce(function(s,t){
@@ -318,6 +349,9 @@
     {id:"saude_equilibrio", pilar:"saude", titulo:"Atleta Equilibrado", descricao:"Treine os 3 grupos de força e as 4 modalidades aeróbicas nos últimos 30 dias.", meta:1, progresso:function(s){return equilibrioCheck(s)?1:0;}},
     {id:"resist_ciclismo_50", pilar:"resistencia", titulo:"Pedal Iniciante", descricao:"Acumule 50km de ciclismo.", meta:50, progresso:function(s){return somaDistancia(s,"ciclismo");}},
     {id:"resist_ciclismo_500", pilar:"resistencia", titulo:"Pedal de Longa Distância", descricao:"Acumule 500km de ciclismo.", meta:500, progresso:function(s){return somaDistancia(s,"ciclismo");}},
+    {id:"ciclismo_20km_10x", pilar:"resistencia", titulo:"Pedaladas Longas — Bronze", descricao:"Complete 10 sessões de ciclismo com 20km ou mais.", meta:10, progresso:function(s){return contarSessoesPorDistanciaMinima(s,"ciclismo",20);}},
+    {id:"ciclismo_20km_20x", pilar:"resistencia", titulo:"Pedaladas Longas — Prata", descricao:"Complete 20 sessões de ciclismo com 20km ou mais.", meta:20, progresso:function(s){return contarSessoesPorDistanciaMinima(s,"ciclismo",20);}},
+    {id:"ciclismo_30km_1h", pilar:"resistencia", titulo:"30km Abaixo de 1h", descricao:"Complete uma sessão de ciclismo com pelo menos 30km em até 60 minutos.", meta:1, progresso:function(s){ return melhorRitmoKmH(s,"ciclismo",30) >= 30 ? 1 : 0;}},
     {id:"resist_corrida_20", pilar:"resistencia", titulo:"Corredor Iniciante", descricao:"Acumule 20km de corrida.", meta:20, progresso:function(s){return somaDistancia(s,"corrida");}},
     {id:"resist_corrida_200", pilar:"resistencia", titulo:"Corredor de Fundo", descricao:"Acumule 200km de corrida.", meta:200, progresso:function(s){return somaDistancia(s,"corrida");}},
     {id:"resist_natacao_10", pilar:"resistencia", titulo:"Nadador Iniciante", descricao:"Acumule 10km de natação.", meta:10, progresso:function(s){return somaDistancia(s,"natacao");}},
@@ -325,7 +359,25 @@
     {id:"forca_volume_5000", pilar:"forca", titulo:"Sobrecarga Inicial", descricao:"Acumule 5.000kg de volume total de força (peso × reps × séries).", meta:5000, progresso:function(s){return somaVolumeForca(s);}},
     {id:"forca_volume_50000", pilar:"forca", titulo:"Volume de Elite", descricao:"Acumule 50.000kg de volume total de força.", meta:50000, progresso:function(s){return somaVolumeForca(s);}},
     {id:"forca_progressao", pilar:"forca", titulo:"Sobrecarga Progressiva", descricao:"Aumente a carga em um mesmo exercício por 3 registros seguidos.", meta:1, progresso:function(s){return s.flags.progressao?1:0;}},
-    {id:"disc_nivel5", pilar:"disciplina", titulo:"Disciplina Forjada", descricao:"Alcance o nível 5 no atributo Disciplina.", meta:5, progresso:function(s){return nivelAtributo(s.atributos.disciplina.xp).nivel;}}
+    {id:"disc_nivel5", pilar:"disciplina", titulo:"Disciplina Forjada", descricao:"Alcance o nível 5 no atributo Disciplina.", meta:5, progresso:function(s){return nivelAtributo(s.atributos.disciplina.xp).nivel;}},
+    {id:"along_primeiro", pilar:"saude", titulo:"Primeiro Alongamento", descricao:"Registre sua primeira sessão de alongamento.", meta:1, progresso:function(s){
+      return s.treinos.filter(function(t){return t.tipo==="alongamento";}).length;
+    }},
+    {id:"along_10", pilar:"saude", titulo:"Mobilidade em Construção", descricao:"Complete 10 sessões de alongamento.", meta:10, progresso:function(s){
+      return s.treinos.filter(function(t){return t.tipo==="alongamento";}).length;
+    }},
+    {id:"along_30", pilar:"saude", titulo:"Rotina de Mobilidade", descricao:"Complete 30 sessões de alongamento.", meta:30, progresso:function(s){
+      return s.treinos.filter(function(t){return t.tipo==="alongamento";}).length;
+    }},
+    {id:"along_combo", pilar:"saude", titulo:"Recuperação Ativa", descricao:"Faça alongamento no mesmo dia de outro treino por 5 vezes.", meta:5, progresso:function(s){
+      var diasComAlong = {};
+      var diasComTreino = {};
+      s.treinos.forEach(function(t){
+        if(t.tipo==="alongamento") diasComAlong[t.data] = true;
+        else diasComTreino[t.data] = true;
+      });
+      return Object.keys(diasComAlong).filter(function(d){ return diasComTreino[d]; }).length;
+    }}
   ];
 
   function pad(n){ return n<10 ? "0"+n : ""+n; }
@@ -369,8 +421,9 @@
       perfil:{streakAtual:0, streakMaxima:0, ultimaData:null, protecoes:0},
       atributos:{
         forca_empurrar:{xp:0}, forca_puxar:{xp:0}, forca_pernas:{xp:0},
-        end_ciclismo:{xp:0}, end_corrida:{xp:0}, end_natacao:{xp:0}, end_squash:{xp:0},
-        disciplina:{xp:0}
+        end_ciclismo:{xp:0}, end_corrida:{xp:0}, end_natacao:{xp:0}, end_squash:{xp:0}, end_beach_tennis:{xp:0},
+        disciplina:{xp:0},
+        flexibilidade:{xp:0}
       },
       treinos:[],
       recordes:{},
@@ -517,6 +570,11 @@
       state.atributos[attrKey].xp += xpGrupo;
       xpGanhoTotal += xpGrupo;
       detalhes = {grupo:payload.grupo, exercicios:payload.exercicios};
+    } else if(payload.tipo === "alongamento"){
+      var xpAlong = 25;
+      state.atributos.flexibilidade.xp += xpAlong;
+      xpGanhoTotal += xpAlong;
+      detalhes = {};
     } else {
       var attrKeyAero = MODALIDADES_AEROBICO[payload.subtipoAerobico];
       var dur = payload.duracaoMin || 0;
@@ -541,7 +599,59 @@
     return {treino:treino, novasConquistas:novasConquistas, novosRecordes:novosRecordes};
   }
 
-  // ---------- Renderização ----------
+  function deletarTreino(id){
+    var state = carregarEstado();
+    state.treinos = state.treinos.filter(function(t){ return t.id !== id; });
+
+    // recalcula atributos (exceto disciplina — streak já foi conquistado)
+    Object.keys(state.atributos).forEach(function(k){
+      if(k !== "disciplina") state.atributos[k].xp = 0;
+    });
+    state.recordes = {};
+    state.trackerProgressao = {};
+    state.flags.progressao = false;
+
+    state.treinos.forEach(function(t){
+      if(t.tipo === "academia"){
+        var atk = GRUPOS_ACADEMIA[t.detalhes.grupo];
+        t.detalhes.exercicios.forEach(function(ex){
+          var vol = (ex.peso||0)*(ex.reps||0)*(ex.series||0);
+          state.atributos[atk].xp += Math.round(vol/10) + 20;
+          var chave = "forca:"+ex.nome.trim().toLowerCase();
+          if(!state.recordes[chave] || ex.peso > state.recordes[chave].valor)
+            state.recordes[chave] = {valor:ex.peso, unidade:"kg", label:ex.nome.trim(), data:t.data};
+          var ct = ex.nome.trim().toLowerCase();
+          if(!state.trackerProgressao[ct]) state.trackerProgressao[ct] = {ultimoPeso:0, sequencia:0};
+          var tr = state.trackerProgressao[ct];
+          if(ex.peso > tr.ultimoPeso) tr.sequencia += 1;
+          else if(ex.peso < tr.ultimoPeso) tr.sequencia = 0;
+          tr.ultimoPeso = ex.peso;
+          if(tr.sequencia >= 3) state.flags.progressao = true;
+        });
+      } else if(t.tipo === "alongamento"){
+        state.atributos.flexibilidade.xp += 25;
+      } else {
+        var ak = MODALIDADES_AEROBICO[t.detalhes.subtipo];
+        if(ak){
+          var dur = t.detalhes.duracaoMin||0, dist = t.detalhes.distanciaKm||0;
+          state.atributos[ak].xp += Math.round(dur*3 + dist*5);
+          var ca = "end:"+t.detalhes.subtipo;
+          var val = dist>0 ? dist : dur;
+          var uni = dist>0 ? "km" : "min";
+          if(!state.recordes[ca] || val > state.recordes[ca].valor)
+            state.recordes[ca] = {valor:val, unidade:uni, label:MODALIDADES_LABEL[t.detalhes.subtipo]||t.detalhes.subtipo, data:t.data};
+        }
+      }
+    });
+
+    // reconstroi xpGanho por treino para manter histórico coerente
+    state.conquistasDesbloqueadas = [];
+    verificarConquistas(state);
+    salvarEstado(state);
+    return state;
+  }
+
+
 
   function renderStatus(state){
     var xpTotal = Object.keys(state.atributos).reduce(function(s,k){ return s+state.atributos[k].xp; },0);
@@ -591,15 +701,29 @@
       var resumo;
       if(t.tipo==="academia"){
         resumo = ATTRS_GRUPO_LABEL[t.detalhes.grupo]+" · "+t.detalhes.exercicios.length+" exercício(s)";
+      } else if(t.tipo==="alongamento"){
+        resumo = "Alongamento";
       } else {
-        resumo = MODALIDADES_LABEL[t.detalhes.subtipo]+" · "+t.detalhes.duracaoMin+" min"+(t.detalhes.distanciaKm ? " · "+t.detalhes.distanciaKm+" km" : "");
+        resumo = (MODALIDADES_LABEL[t.detalhes.subtipo]||t.detalhes.subtipo)+" · "+t.detalhes.duracaoMin+" min"+(t.detalhes.distanciaKm ? " · "+t.detalhes.distanciaKm+" km" : "");
       }
-      return '<div class="linha-historico">'+
+      return '<div class="linha-historico" data-id="'+t.id+'">'+
         '<div class="historico-data">'+formatarData(t.data)+'</div>'+
         '<div class="historico-resumo">'+resumo+'</div>'+
         '<div class="historico-xp">+'+t.xpGanho+' XP</div>'+
+        '<button class="btn-deletar" data-id="'+t.id+'" title="Remover registro" aria-label="Remover">×</button>'+
       '</div>';
     }).join("");
+    cont.addEventListener("click", function(e){
+      var btn = e.target.closest(".btn-deletar");
+      if(!btn) return;
+      var idAlvo = btn.getAttribute("data-id");
+      if(!confirm("Remover esse registro? O XP e os recordes serão recalculados automaticamente.")) return;
+      var novoState = deletarTreino(idAlvo);
+      atualizarTudo();
+      renderHistorico(novoState);
+      renderConquistas(novoState);
+      mostrarToast("Registro removido e dados recalculados.");
+    }, {once: true});
   }
 
   function renderConquistas(state){
@@ -672,10 +796,10 @@
     var div = document.createElement("div");
     div.className = "linha-exercicio";
     div.innerHTML =
-      '<input type="text" class="ex-nome" placeholder="Exercício (ex: Supino reto)" required>'+
-      '<input type="number" class="ex-peso" placeholder="kg" min="0" step="0.5" required>'+
-      '<input type="number" class="ex-reps" placeholder="reps" min="1" required>'+
-      '<input type="number" class="ex-series" placeholder="séries" min="1" required>'+
+      '<input type="text" class="ex-nome" placeholder="Exercício (ex: Supino reto)">'+
+      '<input type="number" class="ex-peso" placeholder="kg" min="0" step="0.5">'+
+      '<input type="number" class="ex-reps" placeholder="reps" min="1">'+
+      '<input type="number" class="ex-series" placeholder="séries" min="1">'+
       '<button type="button" class="btn-remover" aria-label="Remover exercício">×</button>';
     div.querySelector(".btn-remover").addEventListener("click", function(){
       if(document.querySelectorAll(".linha-exercicio").length>1) div.remove();
@@ -777,6 +901,15 @@
       document.getElementById("inputData").value = hojeISO();
       document.getElementById("listaExercicios").innerHTML = "";
       document.getElementById("listaExercicios").appendChild(criarLinhaExercicio());
+      atualizarTudo();
+    });
+
+    document.getElementById("btnAlongamento").addEventListener("click", function(){
+      var resultado = registrarTreino({tipo:"alongamento", data:hojeISO()});
+      mostrarToast("Alongamento registrado! +"+resultado.treino.xpGanho+" XP");
+      resultado.novasConquistas.forEach(function(a, i){
+        setTimeout(function(){ mostrarToast("Conquista desbloqueada: "+a.titulo); }, 1300+i*1300);
+      });
       atualizarTudo();
     });
 
